@@ -1,8 +1,6 @@
-import scipy as sp
-import pylab as pl
-import scipy.stats as st
-import numpy as np
-import pandas as pd
+import sys
+sys.path.append("/home/kaspar")
+from y10k_prediction.imports import *
 
 def summarise_Rsq(Y, Ypred):
     P = Y.shape[1]

@@ -1,25 +1,7 @@
 import sys
-import scipy as sp
-import pylab as pl
-import scipy.stats as st
-import numpy as np
-import pandas as pd
-
-import limix.modules.varianceDecomposition as var
-import limix.modules.qtl as qtl
-import limix.io.data as data
-import limix.io.genotype_reader as gr
-import limix.io.phenotype_reader as phr
-import limix.io.data_util as data_util
-import limix.utils.preprocess as preprocess
-# plotting and visualization utilties
-from limix.utils.plot import *
-# genotype summary stats
-from limix.stats.geno_summary import *
-from sklearn import linear_model
-
-sys.path.append("/home/kaspar/y10k_prediction")
-from LMM import *
+sys.path.append("/home/kaspar")
+from y10k_prediction.imports import *
+from y10k_prediction.LMM import *
 
 def get_predictions_iid(y, covs, Itrain, Itest):
     lm = linear_model.LinearRegression()

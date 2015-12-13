@@ -1,9 +1,6 @@
-import scipy as sp
-import numpy as np
-import limix.io.data as data
-import limix.io.genotype_reader as gr
-import limix.io.phenotype_reader as phr
-
+import sys
+sys.path.append("/home/kaspar")
+from y10k_prediction.imports import *
 
 def get_data_without_parents(file_name, environments=None):
 
