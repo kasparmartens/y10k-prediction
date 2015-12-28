@@ -57,7 +57,7 @@ def calculate_kinship_mod(geno_matrix):
     return W
 
 
-def find_next_term(snps, y, K, Itrain, covs, interactions, iadded, allow_interactions, pvalue_threshold=1, verbose=True):
+def find_next_term(lmm, snps, Itrain, covs, interactions, iadded, allow_interactions, verbose=True):
     indexes = []
     pv = []
     new_variable = []
@@ -72,11 +72,9 @@ def find_next_term(snps, y, K, Itrain, covs, interactions, iadded, allow_interac
                 column = covs[:, i]
                 temp = (column * snps.T).T
                 X = np.column_stack((X, temp))
-                    
-    if K == "iid":
-        lmm = qtl.test_lm(X[Itrain, :], y[Itrain], covs = covs[Itrain, :])
-    else:
-        lmm = qtl.test_lmm(X[Itrain, :], y[Itrain], K=K[Itrain, :][:, Itrain], searchDelta=False, covs=covs[Itrain, :])
+    lmm._lmm.setSNPs(X[Itrain, :])
+    lmm._lmm.setCovs(covs[Itrain, :])
+    lmm.process()
 
     pv = lmm.getPv().ravel()
     which_snp = pv.argmin()
@@ -87,40 +85,22 @@ def find_next_term(snps, y, K, Itrain, covs, interactions, iadded, allow_interac
     
     return {"index": index, "interaction": itested[interaction_id], "pvalue": pvalue, "new_variable": new_variable}
 
-def add_QTLs(y, snps, K, Itrain, maxiter=10, pvalue_threshold = 1, allow_interactions=True, update_kinship=False, verbose=True):
-    covs = np.row_stack((np.ones((len(y)))))
-    iadded = [0]
-    pvadded = [1]
-    interactions = [0]
-    for k in range(1, maxiter + 1):
-        if update_kinship:
-            indexes = find_correlated_snp_indexes(snps, iadded)
-            subset_snps = leave_out_snps(snps, indexes)
-            K = calculate_kinship(subset_snps)
-        obj = find_next_term(snps, y, K, Itrain, covs, interactions, iadded, allow_interactions, pvalue_threshold, verbose=verbose)
-
-        if obj["pvalue"] < pvalue_threshold:
-            print obj["index"]
-            iadded.append(obj["index"])
-            pvadded.append(obj["pvalue"])
-            interactions.append(obj["interaction"])
-            covs = np.column_stack((covs, obj["new_variable"]))
-        else:
-            break
+def find_next_term_1(lmm, snps, Itrain, covs, interactions, iadded, allow_interactions, verbose=True):
+    pv = lmm.getPv().ravel()
+    which_snp = pv.argmin()
+    index = which_snp
+    pvalue = pv[which_snp]
+    new_variable = snps[:, which_snp]
     
-    out = {}
-    out["iadded"] = iadded
-    out["pvadded"] = pvadded
-    out["interactions"] = interactions
-    out["covs"] = covs
-    return out
+    return {"index": index, "interaction": 0, "pvalue": pvalue, "new_variable": new_variable}
 
-def add_QTLs_conditional(Y, which_col, X, K, Itrain, maxiter=10, pvalue_threshold = 1, allow_interactions=True, conditional=True, verbose=True):
+def add_QTLs_conditional(Y, which_col, X, K, Itrain, maxiter=10, pvalue_threshold=1, allow_interactions=True, conditional=True, verbose=True):
     y = Y[:, which_col]
     covs = np.ones((Y.shape[0], 1))
     iadded = [0]
     interactions = [0]
     pvadded = [1]
+    lmm = qtl.lmm(X[Itrain, :], y[Itrain], K=K[Itrain, :][:, Itrain], covs=covs)
     if conditional:
         for j in range(Y.shape[1]):
             if j != which_col:
@@ -129,7 +109,10 @@ def add_QTLs_conditional(Y, which_col, X, K, Itrain, maxiter=10, pvalue_threshol
                 interactions.append(-1)
                 pvadded.append(1)
     for k in range(1, maxiter + 1):
-        obj = find_next_term(X, y, K, Itrain, covs, interactions, iadded, allow_interactions, pvalue_threshold, verbose=verbose)
+        if k==1:
+            obj = find_next_term_1(lmm, X, Itrain, covs, interactions, iadded, allow_interactions, verbose=verbose)
+        else:
+            obj = find_next_term(lmm, X, Itrain, covs, interactions, iadded, allow_interactions, verbose=verbose)
 
         if obj["pvalue"] < pvalue_threshold:
             iadded.append(obj["index"])

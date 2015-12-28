@@ -18,3 +18,5 @@ import limix.utils.preprocess as preprocess
 from limix.utils.plot import *
 from limix.stats.geno_summary import *
 from sklearn import linear_model
+import scipy.linalg as LA
+import limix.modules.lmm_fast as lmm_fast
