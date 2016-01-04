@@ -18,9 +18,9 @@ def get_predictions_iid_with_weights(y, covs, Itrain, Itest):
     sigma2 = sum(residuals**2) / (Itrain.sum() - covs.shape[1])
     return pred, coefs, sigma2
 
-def QTL_iid_predictions(Y, which_col, snps, Itrain, Itest, pred_nQTLs, maxiter=10, pvalue_threshold=1, n_folds = 4, verbose=False):
+def QTL_iid_predictions(Y, which_col, snps, Itrain, Itest, pred_nQTLs, maxiter=10, pvalue_threshold=1, n_folds=4, verbose=False):
     # first, select ordering of covariates using Itrain 
-    obj = add_QTLs_conditional(Y, which_col, snps, "iid", Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
+    obj = add_QTLs_conditional(Y, which_col, snps, np.eye(Y.shape[0]), Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
     y = Y[:, which_col]
     covs = obj["covs"]
     iadded = np.array(obj["iadded"])
@@ -65,7 +65,7 @@ def QTL_iid_predictions(Y, which_col, snps, Itrain, Itest, pred_nQTLs, maxiter=1
 
 def QTL_iid_predictions_exploration(Y, which_col, snps, Itrain, Itest, pred_nQTLs, maxiter=10, pvalue_threshold=1, n_folds=4, verbose=False):
     # first, select ordering of covariates using Itrain 
-    obj = add_QTLs_conditional(Y, which_col, snps, "iid", Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
+    obj = add_QTLs_conditional(Y, which_col, snps, np.eye(Y.shape[0]), Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
     y = Y[:, which_col]
     covs = obj["covs"]
     iadded = np.array(obj["iadded"])
@@ -117,3 +117,38 @@ def QTL_iid_predictions_exploration(Y, which_col, snps, Itrain, Itest, pred_nQTL
             "Rsquared": Rsq_final, 
             "Rsq_test": Rsquared_test, 
             "Rsq_train": Rsquared_train}
+
+def QTLs_LOO_exploration(Y, which_col, snps, Itrain_list, Itest_list, maxiter=10, pvalue_threshold=1, n_folds=4, verbose=False):
+    pred_nQTLs = range(maxiter+1)
+    Ntotal = len(Itrain_list)
+    pred_test = sp.zeros(Ntotal)
+    ytest = sp.zeros(Ntotal)
+    Rsq_train = sp.zeros(Ntotal)
+    for i in range(Ntotal):
+        Itest = Itest_list[i]
+        Itrain = Itrain_list[i]
+        
+        obj = add_QTLs_conditional(Y, which_col, snps, np.eye(Y.shape[0]), Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
+        y = Y[:, which_col]
+        covs = obj["covs"]
+        iadded = np.array(obj["iadded"])
+        interactions = np.array(obj["interactions"])
+        pvadded = obj["pvadded"]
+
+        pred_train = get_predictions_iid(y, covs[:, 0:(maxiter+1)], Itrain, Itrain)
+        Rsq_train[i] = sp.corrcoef(pred_train, y[Itrain])[0, 1]**2
+        
+        pred_test[i] = get_predictions_iid(y, covs[:, 0:(maxiter+1)], Itrain, Itest)
+        ytest[i] = y[Itest]
+        temp = pd.DataFrame({"iadded": iadded[1:len(iadded)], "iter": i})
+        if i==0:
+            qtls = temp
+        else:
+            qtls = pd.concat((qtls, temp))
+        
+    Rsq_test = sp.corrcoef(pred_test, ytest)[0, 1]**2
+    return {"Rsq_test": Rsq_test, 
+            "Rsq_train": Rsq_train, 
+            "pred": pred_test,
+            "obs": ytest, 
+            "QTLs": qtls}

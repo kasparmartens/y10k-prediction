@@ -100,7 +100,7 @@ def add_QTLs_conditional(Y, which_col, X, K, Itrain, maxiter=10, pvalue_threshol
     iadded = [0]
     interactions = [0]
     pvadded = [1]
-    lmm = qtl.lmm(X[Itrain, :], y[Itrain], K=K[Itrain, :][:, Itrain], covs=covs)
+    lmm = qtl.lmm(X[Itrain, :], y[Itrain], K=K[Itrain, :][:, Itrain], covs=covs[Itrain, :])
     if conditional:
         for j in range(Y.shape[1]):
             if j != which_col:
@@ -251,39 +251,3 @@ def summarise_Rsq_ver2(Ypred_list, Y, environments, pred_depths):
             Rsq[i, j] = sp.corrcoef(Ypred[:, i], Y[:, j])[0,1]**2
     df = pd.DataFrame(Rsq, columns = environments)
     return df
-
-def QTLs_LOO_exploration(Y, which_col, snps, Itrain_list, Itest_list, maxiter=10, pvalue_threshold=1, n_folds=4, verbose=False):
-    pred_nQTLs = range(maxiter+1)
-    Ntotal = len(Itrain_list)
-    pred_test = sp.zeros(Ntotal)
-    ytest = sp.zeros(Ntotal)
-    Rsq_train = sp.zeros(Ntotal)
-    for i in range(Ntotal):
-        Itest = Itest_list[i]
-        Itrain = Itrain_list[i]
-        
-        obj = add_QTLs_conditional(Y, which_col, snps, "iid", Itrain, maxiter, pvalue_threshold, allow_interactions=False, conditional=False, verbose=verbose)
-        y = Y[:, which_col]
-        covs = obj["covs"]
-        iadded = np.array(obj["iadded"])
-        interactions = np.array(obj["interactions"])
-        pvadded = obj["pvadded"]
-
-        pred_train, weights = get_predictions_iid_with_weights(y, covs[:, 0:(maxiter+1)], Itrain, Itrain)
-        Rsq_train[i] = sp.corrcoef(pred_train, y[Itrain])[0, 1]**2
-        
-        pred_test[i] = get_predictions_iid(y, covs[:, 0:(maxiter+1)], Itrain, Itest)
-        ytest[i] = y[Itest]
-        temp = pd.DataFrame({"iadded": iadded[1:len(iadded)], "weights": weights[1:len(weights)], "iter": i})
-        if i==0:
-            qtls = temp
-        else:
-            qtls = pd.concat((qtls, temp))
-        
-    Rsq_test = sp.corrcoef(pred_test, ytest)[0, 1]**2
-    return {"Rsq_test": Rsq_test, 
-            "Rsq_train": Rsq_train, 
-            "pred": pred_test,
-            "obs": ytest, 
-            "QTLs": qtls}
-
