@@ -78,7 +78,7 @@ def matrix_helper_conditional_pred(B, C, D, A_inv, res_old, res_new, Kold, Knew,
     E = np.linalg.inv(D - np.dot(np.dot(C, A_inv), B))
 
     temp2 = np.dot(np.dot(temp1, B), E)
-    temp3 = np.dot(C, np.dot(A_inv, res_old)
+    temp3 = np.dot(C, np.dot(A_inv, res_old))
     temp4 = np.dot(Knew, E)
 
     comp1 = np.dot(temp1, res_old)
